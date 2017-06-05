@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/st3v/scope-bosh/bosh/monit"
 )
 
 type pluginSpec struct {
@@ -74,8 +76,8 @@ func newReport(hostname string) report {
 	}
 }
 
-func (r report) AddJob(jobSpec spec) {
-	hostID := fmt.Sprintf("%s;<host>", r.hostname)
+func (r report) setInstanceSpecData(jobSpec spec) {
+	hostID := r.hostID()
 
 	node := nodeSpec{
 		ID:       hostID,
@@ -110,6 +112,27 @@ func (r report) AddJob(jobSpec spec) {
 	r.Host.Nodes[hostID] = node
 }
 
+func (r report) hostID() string {
+	return fmt.Sprintf("%s;<host>", r.hostname)
+}
+
+func (r report) setMonitProcesses(processes []monit.Process) {
+	hostID := r.hostID()
+	node := r.Host.Nodes[hostID]
+
+	for k := range node.Latest {
+		if strings.HasPrefix(k, MonitProcessesPrefix) {
+			delete(node.Latest, k)
+		}
+	}
+
+	for _, p := range processes {
+		node.Latest[MonitProcessesPrefix+p.Name()] = latest(p.Status())
+	}
+
+	r.Host.Nodes[hostID] = node
+}
+
 func host() hostSpec {
 	return hostSpec{
 		Label:          "host",
@@ -128,18 +151,20 @@ func latest(v string) latestSpec {
 }
 
 const (
-	BoshJobPrefix       = "bosh_job_"
-	BoshTemplatesPrefix = "bosh_templates_"
-	BoshPackagesPrefix  = "bosh_packages_"
-	BoshNetworksPrefix  = "bosh_networks_"
-	BoshJobName         = "bosh_job_name"
-	BoshJobID           = "bosh_job_id"
-	BoshJobIndex        = "bosh_job_index"
-	BoshJobDeployment   = "bosh_job_deployment"
+	BoshJobPrefix        = "bosh_job_"
+	BoshTemplatesPrefix  = "bosh_templates_"
+	BoshPackagesPrefix   = "bosh_packages_"
+	BoshNetworksPrefix   = "bosh_networks_"
+	BoshJobName          = "bosh_job_name"
+	BoshJobID            = "bosh_job_id"
+	BoshJobIndex         = "bosh_job_index"
+	BoshJobDeployment    = "bosh_job_deployment"
+	MonitProcessesPrefix = "monit_processes_"
 )
 
 var tableTemplates = map[string]tableTemplateSpec{
-	BoshJobPrefix:       {ID: BoshJobPrefix, Label: "Bosh Job Info", Prefix: BoshJobPrefix},
-	BoshTemplatesPrefix: {ID: BoshTemplatesPrefix, Label: "Bosh Templates", Prefix: BoshTemplatesPrefix},
-	BoshPackagesPrefix:  {ID: BoshPackagesPrefix, Label: "Bosh Packages", Prefix: BoshPackagesPrefix},
+	BoshJobPrefix:        {ID: BoshJobPrefix, Label: "Bosh Job Info", Prefix: BoshJobPrefix},
+	BoshTemplatesPrefix:  {ID: BoshTemplatesPrefix, Label: "Bosh Templates", Prefix: BoshTemplatesPrefix},
+	BoshPackagesPrefix:   {ID: BoshPackagesPrefix, Label: "Bosh Packages", Prefix: BoshPackagesPrefix},
+	MonitProcessesPrefix: {ID: MonitProcessesPrefix, Label: "Monit Processes", Prefix: MonitProcessesPrefix},
 }
