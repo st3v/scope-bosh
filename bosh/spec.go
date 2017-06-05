@@ -30,11 +30,10 @@ type pkg struct {
 }
 
 type network struct {
-	CloudProperties map[string]string `json:"cloud_properties"`
-	Default         []string          `json:"default"`
-	Gateway         string            `json:"gateway"`
-	IP              string            `json:"ip"`
-	Netmask         string            `json:"netmask"`
+	Default []string `json:"default"`
+	Gateway string   `json:"gateway"`
+	IP      string   `json:"ip"`
+	Netmask string   `json:"netmask"`
 }
 
 func loadSpec(path string) (spec, error) {
