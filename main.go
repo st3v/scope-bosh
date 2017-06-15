@@ -10,14 +10,17 @@ import (
 	"os/signal"
 	"path/filepath"
 	"syscall"
+	"time"
 
 	"github.com/st3v/scope-bosh/bosh"
+	"github.com/st3v/scope-bosh/bosh/monit"
 )
 
 var (
-	pluginsRoot string
-	hostname    string
-	jobSpecPath string
+	pluginsRoot     string
+	hostname        string
+	jobSpecPath     string
+	refreshInterval time.Duration
 )
 
 func init() {
@@ -40,6 +43,13 @@ func init() {
 		"hostname",
 		"",
 		"hostname as reported by scope",
+	)
+
+	flag.DurationVar(
+		&refreshInterval,
+		"refreshInterval",
+		3*time.Second,
+		"interval to fetch for process status updates from monit",
 	)
 }
 
@@ -69,7 +79,13 @@ func main() {
 
 	handleSignals()
 
-	plugin := bosh.NewPlugin(hostname, jobSpecPath)
+	monitClient, err := monit.NewClient()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	plugin := bosh.NewPlugin(hostname, jobSpecPath, monitClient, refreshInterval)
+	defer plugin.Close()
 
 	http.HandleFunc("/report", plugin.Report)
 
